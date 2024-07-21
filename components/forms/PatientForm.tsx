@@ -10,6 +10,7 @@ import SubmitButton from "../SubmitButton";
 import { UserFormValidation } from "@/lib/validation";
 import { useRouter } from "next/navigation";
 import { createUser } from "@/lib/actions/patient.actions";
+import { revalidatePath } from "next/cache";
 
 export enum FormFieldType {
   INPUT = "input",
@@ -23,6 +24,7 @@ export enum FormFieldType {
 
 const PatientForm = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const form = useForm<z.infer<typeof UserFormValidation>>({
@@ -39,7 +41,10 @@ const PatientForm = () => {
     email,
     phone,
   }: z.infer<typeof UserFormValidation>) {
+    if (isLoading) return; // Prevent multiple submissions
+
     setIsLoading(true);
+    setError("");
     try {
       const userData = { name, email, phone };
       const user = await createUser(userData);
@@ -48,9 +53,11 @@ const PatientForm = () => {
         router.push(`/patients/${user.$id}/register`);
       }
     } catch (error) {
-      console.log("Error creating user:", error); // Add this line
+      console.error("Error creating user:", error);
+      setError("There was an issue creating the user. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }
 
   return (
@@ -85,7 +92,10 @@ const PatientForm = () => {
           label="Phone"
           placeholder="(+91) 123-4567"
         />
-        <SubmitButton isLoading={isLoading}>Get Started</SubmitButton>
+        {error && <p className="text-red-500">{error}</p>}
+        <SubmitButton isLoading={isLoading}>
+          {isLoading ? "Submitting..." : "Get Started"}
+        </SubmitButton>
       </form>
     </Form>
   );
